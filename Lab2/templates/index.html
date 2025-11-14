@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Romania BFS Visualizer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h2>Romania Map BFS Visualizer</h2>
+
+<label>Start City:</label>
+<select id="start">
+    {% for c in cities %}
+        <option value="{{ c }}">{{ c }}</option>
+    {% endfor %}
+</select>
+
+<label>Goal City:</label>
+<select id="goal">
+    {% for c in cities %}
+        <option value="{{ c }}">{{ c }}</option>
+    {% endfor %}
+</select>
+
+<button onclick="runalg()">Start Search</button>
+
+<div id="output"></div>
+
+<div id="map-wrapper">
+    <svg id="map" width="800" height="600">
+
+    <!-- Coordinates for all 20 cities -->
+    <!-- You can adjust positions later if you want -->
+
+    <!-- ROADS (Edges) — drawn first, under the circles -->
+    <g id="roads" stroke="black" stroke-width="2">
+        <!-- Helper function: line(x1, y1, x2, y2) but now manually placed -->
+
+        <!-- Arad edges -->
+        <line x1="150" y1="120" x2="110" y2="80" /> <!-- Arad - Zerind -->
+        <line x1="150" y1="120" x2="260" y2="150" /> <!-- Arad - Sibiu -->
+        <line x1="150" y1="120" x2="140" y2="200" /> <!-- Arad - Timisoara -->
+
+        <!-- Zerind edges -->
+        <line x1="110" y1="80" x2="90" y2="40" /> <!-- Zerind - Oradea -->
+
+        <!-- Oradea edges -->
+        <line x1="90" y1="40" x2="260" y2="150" /> <!-- Oradea - Sibiu -->
+
+        <!-- Sibiu edges -->
+        <line x1="260" y1="150" x2="300" y2="220" /> <!-- Sibiu - Fagaras -->
+        <line x1="260" y1="150" x2="230" y2="250" /> <!-- Sibiu - Rimnicu Vilcea -->
+
+        <!-- Timisoara edges -->
+        <line x1="140" y1="200" x2="160" y2="260" /> <!-- Timisoara - Lugoj -->
+
+        <!-- Lugoj edges -->
+        <line x1="160" y1="260" x2="180" y2="310" /> <!-- Lugoj - Mehadia -->
+
+        <!-- Mehadia -->
+        <line x1="180" y1="310" x2="200" y2="350" /> <!-- Mehadia - Drobeta -->
+
+        <!-- Drobeta -->
+        <line x1="200" y1="350" x2="250" y2="380" /> <!-- Drobeta - Craiova -->
+
+        <!-- Craiova -->
+        <line x1="250" y1="380" x2="230" y2="250" /> <!-- Craiova - Rimnicu -->
+        <line x1="250" y1="380" x2="300" y2="330" /> <!-- Craiova - Pitesti -->
+
+        <!-- Rimnicu -->
+        <line x1="230" y1="250" x2="300" y2="330" /> <!-- Rimnicu - Pitesti -->
+
+        <!-- Fagaras -->
+        <line x1="300" y1="220" x2="350" y2="260" /> <!-- Fagaras - Bucharest -->
+
+        <!-- Pitesti -->
+        <line x1="300" y1="330" x2="350" y2="260" /> <!-- Pitesti - Bucharest -->
+
+        <!-- Bucharest -->
+        <line x1="350" y1="260" x2="400" y2="260" /> <!-- Bucharest - Giurgiu -->
+        <line x1="350" y1="260" x2="450" y2="200" /> <!-- Bucharest - Urziceni -->
+
+        <!-- Urziceni -->
+        <line x1="450" y1="200" x2="520" y2="180" /> <!-- Urziceni - Hirsova -->
+        <line x1="450" y1="200" x2="480" y2="240" /> <!-- Urziceni - Vaslui -->
+
+        <!-- Hirsova -->
+        <line x1="520" y1="180" x2="560" y2="180" /> <!-- Hirsova - Eforie -->
+
+        <!-- Vaslui -->
+        <line x1="480" y1="240" x2="520" y2="260" /> <!-- Vaslui - Iasi -->
+
+        <!-- Iasi -->
+        <line x1="520" y1="260" x2="550" y2="290" /> <!-- Iasi - Neamt -->
+    </g>
+
+    <!-- CITIES (Nodes) -->
+    <g id="cities">
+
+        <circle id="Arad" cx="150" cy="120" r="12" class="city"/><text x="140" y="110">Arad</text>
+        <circle id="Zerind" cx="110" cy="80" r="12" class="city"/><text x="80" y="70">Zerind</text>
+        <circle id="Oradea" cx="90" cy="40" r="12" class="city"/><text x="60" y="35">Oradea</text>
+        <circle id="Sibiu" cx="260" cy="150" r="12" class="city"/><text x="240" y="140">Sibiu</text>
+        <circle id="Timisoara" cx="140" cy="200" r="12" class="city"/><text x="110" y="195">Timisoara</text>
+        <circle id="Lugoj" cx="160" cy="260" r="12" class="city"/><text x="140" y="255">Lugoj</text>
+        <circle id="Mehadia" cx="180" cy="310" r="12" class="city"/><text x="150" y="305">Mehadia</text>
+        <circle id="Drobeta" cx="200" cy="350" r="12" class="city"/><text x="170" y="345">Drobeta</text>
+        <circle id="Craiova" cx="250" cy="380" r="12" class="city"/><text x="220" y="375">Craiova</text>
+        <circle id="Rimnicu Vilcea" cx="230" cy="250" r="12" class="city"/><text x="190" y="245">Rimnicu</text>
+        <circle id="Fagaras" cx="300" cy="220" r="12" class="city"/><text x="280" y="215">Fagaras</text>
+        <circle id="Pitesti" cx="300" cy="330" r="12" class="city"/><text x="280" y="325">Pitesti</text>
+        <circle id="Bucharest" cx="350" cy="260" r="12" class="city"/><text x="320" y="255">Bucharest</text>
+        <circle id="Giurgiu" cx="400" cy="260" r="12" class="city"/><text x="380" y="255">Giurgiu</text>
+        <circle id="Urziceni" cx="450" cy="200" r="12" class="city"/><text x="420" y="195">Urziceni</text>
+        <circle id="Hirsova" cx="520" cy="180" r="12" class="city"/><text x="500" y="175">Hirsova</text>
+        <circle id="Eforie" cx="560" cy="180" r="12" class="city"/><text x="540" y="175">Eforie</text>
+        <circle id="Vaslui" cx="480" cy="240" r="12" class="city"/><text x="460" y="235">Vaslui</text>
+        <circle id="Iasi" cx="520" cy="260" r="12" class="city"/><text x="500" y="255">Iasi</text>
+        <circle id="Neamt" cx="550" cy="290" r="12" class="city"/><text x="530" y="285">Neamt</text>
+
+    </g>
+
+</svg>
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
