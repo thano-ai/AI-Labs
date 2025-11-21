@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IDS File Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Iterative Deepening Search – File Finder</h1>
+
+    <form id="searchForm">
+        <label>Root Directory (example: C:\ or /home/user):</label>
+        <input type="text" name="root" id="root" placeholder="C:\Users\YourName" required>
+
+        <label>File Name to Search:</label>
+        <input type="text" name="filename" id="filename" placeholder="example.txt" required>
+
+        <button type="submit">Search Using IDS</button>
+    </form>
+
+    <h2>Results:</h2>
+    <div id="results"></div>
+</div>
+
+<script>
+document.getElementById("searchForm").onsubmit = async function(e) {
+    e.preventDefault();
+
+    const root = document.getElementById("root").value;
+    const filename = document.getElementById("filename").value;
+    const resultsDiv = document.getElementById("results");
+
+    // Show loading
+    resultsDiv.innerHTML = "<p>Searching... (check console for progress)</p>";
+
+    try {
+        const response = await fetch("/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                root: root,
+                filename: filename
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            resultsDiv.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+            return;
+        }
+
+        if (!data.found) {
+            resultsDiv.innerHTML = "<p>No matching file found within search depth.</p>";
+            return;
+        }
+
+        let html = `<p class="success">File found! Path:</p><ul>`;
+        data.results.forEach(item => {
+            html += `<li>${item}</li>`;
+        });
+        html += `</ul>`;
+        resultsDiv.innerHTML = html;
+
+    } catch (error) {
+        console.error("Error:", error);
+        resultsDiv.innerHTML = `<p class="error">Network error: ${error.message}</p>`;
+    }
+}
+</script>
+
+</body>
+</html>
