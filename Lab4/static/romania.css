@@ -1,0 +1,27 @@
+.city {
+    fill: lightgray;
+    stroke: black;
+    stroke-width: 2;
+}
+
+.visited {
+    fill: orange;
+}
+
+.current {
+    fill: red;
+}
+
+.final-path {
+    fill: green;
+}
+#map-wrapper {
+    width: fit-content;
+    height: 400px;
+    margin: 20px auto;
+    padding: 10px;
+    border: 2px solid #444;
+    border-radius: 12px;
+    background: #f8f8f8;
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+}
