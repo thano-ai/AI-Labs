@@ -1,11 +1,10 @@
 import heapq
-
-def ucs(graph, start, goal):
+def ucs(start, goal, domain):
     queue = []
     heapq.heappush(queue, (0, start))
-
     visited = set()
     parent = {start: None}
+    cost_so_far = {start: 0}
 
     while queue:
         cost, node = heapq.heappop(queue)
@@ -17,22 +16,31 @@ def ucs(graph, start, goal):
             return path[::-1], cost
 
         visited.add(node)
-        for child, edge_cost in graph[node]:
-            if child not in visited:
-                heapq.heappush(queue, (cost + edge_cost, child))
+        for child, child_cost in domain[node]:
+            new_cost = child_cost + cost
+            if child not in visited and (child not in cost_so_far or new_cost < cost_so_far[child]):
+                heapq.heappush(queue, (new_cost, child))
+                cost_so_far[child] = new_cost
                 parent[child] = node
+
     return None, float('inf')
 
-graph = {
-    'A': [('B', 1), ('C', 3)],
-    'B': [('D', 2)],
-    'C': [('E', 4), ('F', 2)],
-    'D': [('G', 1)],
-    'E': [('H', 5)],
-    'F': [],
+
+
+tree = {
+    'A': [('B', 5), ('C', 2)],
+    'B': [('D', 1), ('E', 4)],
+    'C': [('F', 1), ('G', 7)],
+    'D': [],
+    'E': [],
+    'F': [('H', 4), ('I', 5), ('E', 7)],
     'G': [],
-    'H': []
+    'H': [],
+    'I': []
 }
 
-solution_path, cost = ucs(graph, 'A', 'H')
-print(solution_path, cost)
+solution_path , total_cost = ucs('A', 'E', tree)
+print(solution_path, total_cost)
+
+
+

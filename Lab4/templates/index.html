@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>8 Puzzle Solver</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h1>8 Puzzle Solver</h1>
+
+    <form method="post" class="input-box">
+        <label>Enter puzzle state:</label>
+        <input type="text" name="state" placeholder="Example: 125340678" maxlength="9" required>
+        <button type="submit">Solve</button>
+    </form>
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if solution %}
+<h2>Solution Path ({{ solution|length - 1 }} steps)</h2>
+
+<div id="puzzle-viewer">
+    <div id="puzzle-grid" class="grid"></div>
+
+    <div class="controls">
+        <button onclick="prevStep()">Previous</button>
+        <button onclick="nextStep()">Next</button>
+        <button onclick="playAnimation()">▶ Play</button>
+        <button onclick="stopAnimation()">⏸ Stop</button>
+    </div>
+
+    <p id="step-counter">Step: 0</p>
+</div>
+
+<script>
+    const solution = {{ solution|tojson }};
+    let currentStep = 0;
+    let intervalId = null;
+
+    function renderStep(step) {
+        const grid = document.getElementById('puzzle-grid');
+        grid.innerHTML = "";
+
+        const state = solution[step];
+
+        state.split("").forEach(tile => {
+            const div = document.createElement("div");
+            div.className = "tile" + (tile === "0" ? " blank" : "");
+            div.textContent = tile === "0" ? "" : tile;
+            div.style.animation = "fadeIn 0.3s ease";
+            grid.appendChild(div);
+        });
+
+        document.getElementById("step-counter").innerText = `Step: ${step}`;
+    }
+
+    function nextStep() {
+        if (currentStep < solution.length - 1) {
+            currentStep++;
+            renderStep(currentStep);
+        }
+    }
+
+    function prevStep() {
+        if (currentStep > 0) {
+            currentStep--;
+            renderStep(currentStep);
+        }
+    }
+
+    function playAnimation() {
+        stopAnimation();
+        intervalId = setInterval(() => {
+            if (currentStep >= solution.length - 1) {
+                stopAnimation();
+            } else {
+                nextStep();
+            }
+        }, 1000);
+    }
+
+    function stopAnimation() {
+        clearInterval(intervalId);
+    }
+
+    // render step 0 on load
+    renderStep(0);
+</script>
+{% endif %}
+
+
+</div>
+
+</body>
+</html>

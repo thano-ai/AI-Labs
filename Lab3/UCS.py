@@ -1,65 +1,46 @@
 import heapq
 
-
-def uniform_cost_search(tree, start, goal):
-    priority_queue = []
-    heapq.heappush(priority_queue, (0, start))  # (cost, node)
-
+def ucs(domain, start, goal):
+    queue = []
+    heapq.heappush(queue, (0,start))
     visited = set()
-    parent = {}
-    parent[start] = None
+    parent = {start: None}
+    cost_so_far = {start: 0}
 
-    while priority_queue:
-        current_cost, current_node = heapq.heappop(priority_queue)
-
+    while queue:
+        current_cost, current_node = heapq.heappop(queue)
         if current_node == goal:
             path = []
             while current_node is not None:
-                path.append(current_node) # path = [G, D, B, A]
-                current_node = parent[current_node] # A
-            return reversed(path), current_cost  # Return path and cost
+                path.append(current_node)
+                current_node = parent[current_node]
+            return path[::-1], current_cost
 
-        if current_node not in visited:
-            visited.add(current_node)
+        visited.add(current_node)
+        for child, edge_cost in domain[current_node]:
+            new_cost = edge_cost + current_cost
+            if child not in visited and (child not in cost_so_far or new_cost < cost_so_far[child]):
+                cost_so_far[child] = new_cost
+                heapq.heappush(queue, (new_cost, child))
+                parent[child] = current_node
 
-        for neighbor, cost in tree[current_node]:
-            if neighbor not in visited:
-                heapq.heappush(priority_queue, (current_cost + cost, neighbor))
-                parent[neighbor] = current_node
-
-    return None, float('inf')  # Return None if no path found
+    return None, float('inf')
 
 
-graph = {
-    'A': [('B', 1), ('C', 3)],
-    'B': [('D', 2)],
-    'C': [('E', 4), ('F', 2)],
-    'D': [('G', 1)],
-    'E': [('H', 5)],
-    'F': [],
+tree = {
+    'A': [('B', 5), ('C', 2)],
+    'B': [('D', 1), ('E', 4)],
+    'C': [('F', 1), ('G', 7)],
+    'D': [],
+    'E': [],
+    'F': [('E', 2), ('H', 4), ('I', 5)],
     'G': [],
-    'H': []
+    'H': [],
+    'I': []
 }
-# }
-# # tree2 = {
-# #     'A': [('B', 5), ('C', 2)],
-# #     'B': [('D', 1), ('E', 4)],
-# #     'C': [('F', 1), ('G', 7)],
-# #     'D': [],
-# #     'E': [],
-# #     'F': [('H', 4), ('I', 5)],
-# #     'G': [],
-# #     'H': [],
-# #     'I': []
-# # }
 
-start_node = 'A'
-goal_node = 'H'
-path, cost = uniform_cost_search(graph, start_node, goal_node)
+solution, total_cost = ucs(tree, 'A', 'E')
+print(solution, total_cost)
 
-if path:
-    print(f"Path from {start_node} to {goal_node}: {' -> '.join(path)}")
-    print(f"Total cost: {cost}")
-else:
-    print(f"No path found from {start_node} to {goal_node}.")
+
 

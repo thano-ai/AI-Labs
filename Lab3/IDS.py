@@ -10,12 +10,11 @@ def iterative_deepening_search(graph, start, goal):
                 return [node] + path
         return None
 
-    depth = 0
-    while True:
+    for depth in range(len(graph) + 1):
         result = depth_limited_search(start, depth)
         if result:
             return result
-        depth += 1
+    return None
 
 graph = {
     'A': ['B', 'C'],
@@ -37,6 +36,6 @@ graph = {
 # }
 
 start_node = 'A'
-goal_node = 'F'
+goal_node = 'Y'
 path = iterative_deepening_search(graph, start_node, goal_node)
 print("Solution Path:", path)
