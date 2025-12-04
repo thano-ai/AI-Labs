@@ -21,6 +21,14 @@ def manhattan_distance(state):
         distance += abs(x1 - x2) + abs(y1 - y2)
     return distance
 
+def is_solvable(state):
+    nums = [int(x) for x in state if x != "0"]
+    inv = 0
+    for i in range(len(nums)):
+        for j in range(i + 1, len(nums)):
+            if nums[i] > nums[j]:
+                inv += 1
+    return inv % 2 == 0
 
 # ----------------------------
 # Generate Neighbor States
@@ -90,6 +98,9 @@ def index():
 
         if sorted(state) != list("012345678"):
             return render_template("index.html", error="Digits must be 0–8 exactly once")
+
+        if not is_solvable(state):
+            return render_template("index.html", error="This puzzle state is unsolvable")
 
         solution = a_star(state)
 

@@ -1,8 +1,9 @@
 import heapq
 
-def a_start(start, goal, domain, heuristic):
+def greedy(domain, start, goal, heuristic):
     queue = []
     heapq.heappush(queue, (heuristic[start] + 0, start))
+    visited = set()
     parent = {start: None}
     cost_so_far = {start: 0}
 
@@ -15,35 +16,17 @@ def a_start(start, goal, domain, heuristic):
                 node = parent[node]
             return path[::-1]
 
+        visited.add(node)
+
+
         for child, child_cost in domain[node]:
             new_cost = cost_so_far[node] + child_cost
-            if child not in cost_so_far or new_cost < cost_so_far[child]:
+            if child not in visited and (child not in cost_so_far or new_cost < cost_so_far[child]):
                 cost_so_far[child] = new_cost
-                heapq.heappush(queue, (heuristic[child] + new_cost, child))
+                priority = new_cost + heuristic[child]
+                heapq.heappush(queue, (priority, child))
                 parent[child] = node
     return None
-
-def compute_heuristic(goal, graph):
-    reversed_graph = {}
-    for u in graph:
-        for v, cost in graph[u]:
-            reversed_graph.setdefault(v, []).append((u, cost))
-
-    heuristic = {node: float('inf') for node in graph}
-    heuristic[goal] = 0
-    queue = [(0, goal)]
-
-    while queue:
-        cost, node = heapq.heappop(queue)
-        if cost > heuristic[node]:
-            continue
-        for child, child_cost in reversed_graph.get(node, []):
-            new_cost = child_cost + cost
-            if new_cost < heuristic[child]:
-                heuristic[child] = new_cost
-                heapq.heappush(queue, (new_cost, child))
-    return heuristic
-
 
 graph = {
     'S': [('A', 1)],
@@ -55,12 +38,10 @@ graph = {
     'G': []
 }
 
-# heuristic = {
-#     'S': 6, 'A': 5, 'B': 6, 'D': 2, 'E': 1, 'C': 7, 'G': 0
-# }
+heuristic = {
+    'S': 6, 'A': 5, 'B': 6, 'D': 2, 'E': 1, 'C': 7, 'G': 0
+}
 
-heuristic = compute_heuristic('G', graph)
-print(heuristic)
 
-solution = a_start('S', 'G', graph, heuristic)
+solution = greedy(graph, 'S', 'G', heuristic)
 print(solution)
