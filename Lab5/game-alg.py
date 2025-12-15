@@ -1,4 +1,4 @@
-def minimax(node, depth, max_depth, is_max, tree, leaf_values):
+def minimax(node, depth, max_depth, is_max, tree, leaf_values, visited=None):
     """
     Standard Minimax implementation.
     node          : current node index
@@ -8,6 +8,12 @@ def minimax(node, depth, max_depth, is_max, tree, leaf_values):
     tree          : adjacency list (children of each node)
     leaf_values   : dict mapping leaf nodes -> numeric scores
     """
+
+    if visited is None:
+        visited = []
+
+        # Track this node as visited
+    visited.append(node)
 
     # Base case: leaf or depth reached
     if node in leaf_values or depth == max_depth:
