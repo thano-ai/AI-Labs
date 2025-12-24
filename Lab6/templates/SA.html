@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simulated Annealing – 8 Queens</title>
+    <style>
+        body { font-family: Arial; text-align: center; }
+        table { border-collapse: collapse; margin: auto; }
+        td { width: 60px; height: 60px; font-size: 40px; text-align: center; }
+        .white { background: #f0d9b5; }
+        .black { background: #b58863; }
+    </style>
+</head>
+<body>
+
+<h1>Simulated Annealing – 8 Queens</h1>
+<h2>
+Conflicts: {{ cost }}
+{% if done %}
+    Search Finished
+    {% if cost == 0 %}Solution Found!{% else %}Stuck at Local Minimum{% endif %}
+{% else %}
+    Searching...
+{% endif %}
+</h2>
+
+<table>
+{% for row in range(8) %}
+<tr>
+    {% for col in range(8) %}
+        {% set color = 'white' if (row + col) % 2 == 0 else 'black' %}
+        <td class="{{ color }}">
+            {% if board[col] == row %}
+                ♛
+            {% endif %}
+        </td>
+    {% endfor %}
+</tr>
+{% endfor %}
+</table>
+
+<script>
+{% if not done %}
+    setTimeout(function(){ location.reload(); }, 200);
+{% endif %}
+</script>
+
+</body>
+</html>

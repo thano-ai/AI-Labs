@@ -1,0 +1,610 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visualizer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .queue-item {
+      transition: all 0.3s ease;
+    }
+    .queue-item.new {
+      animation: slideIn 0.5s ease;
+    }
+    .queue-item.removed {
+      animation: slideOut 0.5s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideOut {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(20px); }
+    }
+    .log-entry {
+      font-family: monospace;
+      font-size: 11px;
+      padding: 2px 0;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-semibold">Visualizing: {{ filename }}</h2>
+
+      <div class="space-x-2">
+        <button id="btn-play" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Play</button>
+        <button id="btn-pause" class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">Pause</button>
+        <button id="btn-step" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">Step</button>
+        <button id="btn-reset" class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">Reset</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+      <div class="col-span-2 bg-white p-4 rounded shadow">
+        <h3 class="font-semibold mb-2">Graph Visualization</h3>
+        <svg id="graph-svg" width="100%" height="400" class="border rounded"></svg>
+        <div class="mt-4 p-3 bg-gray-50 rounded border">
+          <h4 class="font-semibold text-sm mb-2">Solution Path:</h4>
+          <div id="solution-path" class="text-lg font-mono flex items-center gap-2 flex-wrap">
+            <span class="text-gray-400">No solution found yet...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow space-y-4">
+        <div>
+          <h3 class="font-semibold mb-2">Queue / Stack</h3>
+          <div id="queue-container" class="min-h-32 border-2 border-blue-300 rounded p-3 bg-blue-50">
+            <div id="queue-visual"></div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Visited Nodes</h3>
+          <div id="visited-container" class="min-h-24 border-2 border-green-300 rounded p-3 bg-green-50">
+            <div id="visited-visual" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Current Node</h3>
+          <div id="current-node" class="text-2xl font-bold text-center p-3 border-2 border-yellow-400 rounded bg-yellow-50 min-h-16 flex items-center justify-center">
+            -
+          </div>
+        </div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Event Log</h3>
+          <div id="log" class="text-xs h-40 overflow-y-auto bg-gray-50 p-2 rounded border font-mono"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const filename = "{{ filename }}";
+    let evtSource = null;
+    let buffer = [];
+    let playing = false;
+    let currentStep = 0;
+    let lastQueueState = [];
+    let lastVisitedState = [];
+    let algorithmFinished = false;
+    let solutionPath = null;
+
+    function initializeSSE() {
+      if (evtSource) {
+        evtSource.close();
+      }
+
+      evtSource = new EventSource(`/stream/${filename}`);
+
+      evtSource.onopen = () => {
+        console.log('SSE connection opened');
+        // Only log connection once, not on every reconnect
+        if (currentStep === 0) {
+          addLogEntry('Connected to algorithm stream...');
+        }
+      };
+
+      evtSource.onmessage = (e) => {
+        // Skip keepalive comments
+        if (e.data.trim().startsWith(':')) {
+          return;
+        }
+
+        // Stop processing if algorithm finished
+        if (algorithmFinished) {
+          return;
+        }
+
+        try {
+          const obj = JSON.parse(e.data);
+          console.log('Received:', obj);
+          
+          // Check if algorithm is done
+          if (obj.event === 'done') {
+            algorithmFinished = true;
+            buffer.push(obj);
+            renderState(obj);
+            addLogEntry('Algorithm finished!');
+            return;
+          }
+
+          buffer.push(obj);
+
+          // Update log (append, not prepend)
+          addLogEntry(`Step ${currentStep++}: ${obj.event || 'update'}`);
+
+          // Show first state immediately so user sees something
+          // But keep it in buffer for play/step buttons
+          if (currentStep === 1 && !playing) {
+            // Show first state when it arrives (but don't remove from buffer)
+            renderState(obj);
+          }
+          // For subsequent states:
+          // - If playing: playLoop will process from buffer
+          // - If not playing: wait for play/step button
+        } catch (err) {
+          console.error('Parse error:', err, e.data);
+          if (!algorithmFinished) {
+            addLogEntry(`Parse error: ${err.message}`);
+          }
+        }
+      };
+
+      evtSource.onerror = (err) => {
+        console.error('SSE error:', err);
+        // Don't auto-reconnect - the algorithm should finish naturally
+        // Only show error if connection is actually closed and algorithm not finished
+        if (evtSource.readyState === EventSource.CLOSED && !algorithmFinished) {
+          // Connection closed unexpectedly
+          console.log('SSE connection closed');
+        }
+      };
+    }
+
+    function addLogEntry(message) {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.textContent = message;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight; // Auto-scroll to bottom
+    }
+
+    document.getElementById('btn-play').onclick = () => {
+      // Allow playing even if algorithm finished, as long as there are buffered events
+      if (algorithmFinished && buffer.length === 0) {
+        addLogEntry('Algorithm finished and no steps to replay. Reset to run again.');
+        return;
+      }
+      
+      if (buffer.length === 0) {
+        addLogEntry('No steps in buffer yet. Waiting for algorithm to start...');
+        return;
+      }
+      
+      playing = true;
+      addLogEntry(`Playing... (${buffer.length} steps in buffer)`);
+      console.log('Play button clicked, buffer length:', buffer.length, 'algorithmFinished:', algorithmFinished);
+      // Start the play loop immediately
+      // Don't render here - let playLoop handle it so we process all items
+      playLoop();
+    };
+
+    document.getElementById('btn-pause').onclick = () => {
+      playing = false;
+      addLogEntry('Paused');
+    };
+
+    document.getElementById('btn-step').onclick = () => {
+      if (buffer.length) {
+        const step = buffer.shift();
+        renderState(step);
+        addLogEntry(`Manual step: ${step.event || 'update'}`);
+      } else {
+        addLogEntry('No more steps in buffer');
+      }
+    };
+
+    document.getElementById('btn-reset').onclick = () => {
+      location.reload();
+    };
+
+    function playLoop() {
+      // Check if we should stop
+      if (!playing) {
+        console.log('Play loop stopped: playing is false');
+        return;
+      }
+      
+      // Process one item from buffer if available
+      if (buffer.length > 0) {
+        const s = buffer.shift();
+        console.log('Play loop processing:', s.event, 'Buffer remaining:', buffer.length);
+        renderState(s);
+        
+        // Check if this was the done event
+        if (s.event === 'done') {
+          playing = false;
+          addLogEntry('Finished playing all steps.');
+          return;
+        }
+        
+        // Continue playing after a delay
+        setTimeout(() => playLoop(), 1500); // 1.5 seconds per step
+      } else {
+        // Buffer is empty
+        if (algorithmFinished) {
+          // Algorithm finished and buffer is empty - we're done
+          console.log('Play loop stopped: algorithm finished and buffer empty');
+          playing = false;
+          addLogEntry('All steps played.');
+          return;
+        } else {
+          // Buffer is empty but algorithm still running, check again soon
+          console.log('Play loop: buffer empty, waiting for more events...');
+          setTimeout(() => playLoop(), 100); // Check more frequently when buffer is empty
+        }
+      }
+    }
+
+    function renderQueue(queueArray) {
+      const container = document.getElementById('queue-visual');
+      container.innerHTML = '';
+
+      if (!queueArray || queueArray.length === 0) {
+        container.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">Empty</div>';
+        lastQueueState = [];
+        return;
+      }
+
+      // Create queue shape: horizontal with arrows
+      const queueWrapper = document.createElement('div');
+      queueWrapper.className = 'flex items-center gap-1 flex-wrap';
+      
+      // Front indicator
+      const frontLabel = document.createElement('div');
+      frontLabel.className = 'text-xs text-blue-600 font-bold mb-1 w-full';
+      frontLabel.textContent = '← Front (Next to process)';
+      queueWrapper.appendChild(frontLabel);
+
+      queueArray.forEach((item, index) => {
+        const itemWrapper = document.createElement('div');
+        itemWrapper.className = 'flex items-center';
+        
+        const itemEl = document.createElement('div');
+        itemEl.className = 'queue-item bg-blue-500 text-white px-3 py-2 rounded font-semibold shadow border-2 border-blue-700';
+        itemEl.textContent = item;
+        itemEl.style.minWidth = '40px';
+        itemEl.style.textAlign = 'center';
+        
+        // Check if this is a new item
+        if (!lastQueueState.includes(item) || index !== lastQueueState.indexOf(item)) {
+          itemEl.classList.add('new');
+        }
+        
+        itemWrapper.appendChild(itemEl);
+        
+        // Add arrow between items (except last)
+        if (index < queueArray.length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'text-blue-500 font-bold mx-1';
+          arrow.textContent = '→';
+          itemWrapper.appendChild(arrow);
+        }
+        
+        queueWrapper.appendChild(itemWrapper);
+      });
+
+      // Back indicator
+      const backLabel = document.createElement('div');
+      backLabel.className = 'text-xs text-blue-600 font-bold mt-1 w-full';
+      backLabel.textContent = 'Back (Last added) →';
+      queueWrapper.appendChild(backLabel);
+
+      container.appendChild(queueWrapper);
+      lastQueueState = [...queueArray];
+    }
+
+    function renderVisited(visitedArray) {
+      const container = document.getElementById('visited-visual');
+      container.innerHTML = '';
+
+      if (!visitedArray || visitedArray.length === 0) {
+        container.innerHTML = '<div class="text-gray-400 text-sm">None</div>';
+        lastVisitedState = [];
+        return;
+      }
+
+      visitedArray.forEach((item) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'queue-item bg-green-500 text-white px-3 py-1 rounded text-sm';
+        itemEl.textContent = item;
+        
+        // Check if this is a new item
+        if (!lastVisitedState.includes(item)) {
+          itemEl.classList.add('new');
+        }
+        
+        container.appendChild(itemEl);
+      });
+
+      lastVisitedState = [...visitedArray];
+    }
+
+    function renderSolutionPath(path) {
+      const solutionEl = document.getElementById('solution-path');
+      if (!path || path.length === 0) {
+        solutionEl.innerHTML = '<span class="text-gray-400">No solution found...</span>';
+        return;
+      }
+
+      solutionEl.innerHTML = '';
+      path.forEach((node, index) => {
+        const nodeEl = document.createElement('span');
+        nodeEl.className = 'px-3 py-1 bg-purple-500 text-white rounded font-bold';
+        nodeEl.textContent = node;
+        solutionEl.appendChild(nodeEl);
+
+        // Add arrow between nodes
+        if (index < path.length - 1) {
+          const arrow = document.createElement('span');
+          arrow.className = 'text-purple-500 font-bold text-xl';
+          arrow.textContent = '→';
+          solutionEl.appendChild(arrow);
+        }
+      });
+    }
+
+    function renderState(msg) {
+      if (msg.error) {
+        if (!algorithmFinished) {
+          addLogEntry('ERROR: ' + (msg.traceback || JSON.stringify(msg)));
+        }
+        return;
+      }
+
+      if (msg.event === 'done') {
+        playing = false;
+        algorithmFinished = true;
+        // Render final solution path if we have it
+        if (solutionPath) {
+          renderSolutionPath(solutionPath);
+        }
+        return;
+      }
+
+      const st = msg.state || msg;
+      
+      // Get current node
+      const current = msg.current || st.current;
+      
+      // Get queue/stack/frontier - handle priority queues (extract nodes from tuples)
+      let queueData = [];
+      if (st.frontier !== undefined) {
+        queueData = Array.isArray(st.frontier) ? st.frontier.map(item => 
+          (Array.isArray(item) || (typeof item === 'object' && item !== null)) && item.length >= 2 ? item[1] : item
+        ) : [];
+      } else if (st.queue !== undefined) {
+        queueData = Array.isArray(st.queue) ? st.queue.map(item => 
+          (Array.isArray(item) || (typeof item === 'object' && item !== null)) && item.length >= 2 ? item[1] : item
+        ) : [];
+      } else if (st.stack !== undefined) {
+        queueData = Array.isArray(st.stack) ? st.stack.map(item => 
+          (Array.isArray(item) || (typeof item === 'object' && item !== null)) && item.length >= 2 ? item[1] : item
+        ) : [];
+      }
+
+      // Get visited
+      let visitedData = [];
+      if (st.visited !== undefined) {
+        visitedData = Array.isArray(st.visited) ? st.visited : [];
+      }
+
+      // Check for solution event (but continue rendering)
+      if (msg.event === 'solution' && msg.path) {
+        solutionPath = msg.path;
+        renderSolutionPath(solutionPath);
+        addLogEntry(`Solution found! Path: ${msg.path.join(' → ')}`);
+        // Continue to render the graph even after solution is found
+      }
+
+      // Render queue/stack immediately
+      renderQueue(queueData);
+
+      // Render visited immediately
+      renderVisited(visitedData);
+
+      // Render current node immediately
+      const currentEl = document.getElementById('current-node');
+      if (current) {
+        currentEl.textContent = current;
+        currentEl.className = 'text-2xl font-bold text-center p-3 border-2 border-yellow-400 rounded bg-yellow-100 min-h-16 flex items-center justify-center';
+      } else {
+        currentEl.textContent = '-';
+        currentEl.className = 'text-2xl font-bold text-center p-3 border-2 border-gray-300 rounded bg-gray-50 min-h-16 flex items-center justify-center text-gray-400';
+      }
+
+      // Graph visualization with connections
+      try {
+        const svg = d3.select('#graph-svg');
+        if (svg.empty()) {
+          console.error('SVG element not found');
+          return;
+        }
+        
+        svg.selectAll('*').remove();
+        const svgNode = svg.node();
+        const w = svgNode ? svgNode.clientWidth || 800 : 800;
+        const h = svgNode ? svgNode.clientHeight || 400 : 400;
+        
+        // Set explicit width/height if not set
+        if (!svg.attr('width')) svg.attr('width', w);
+        if (!svg.attr('height')) svg.attr('height', h);
+
+        // Get graph structure
+        const graph = st.graph || null;
+        const allNodes = new Set();
+        
+        if (graph && typeof graph === 'object') {
+          // Collect all nodes from graph - handle both simple lists and tuples with costs
+          Object.keys(graph).forEach(node => {
+            allNodes.add(node);
+            if (Array.isArray(graph[node])) {
+              graph[node].forEach(neighbor => {
+                // Handle tuples like ('A', 1) - extract just the node name
+                const nodeName = (Array.isArray(neighbor) || (typeof neighbor === 'object' && neighbor !== null)) && neighbor.length >= 1 
+                  ? neighbor[0] 
+                  : neighbor;
+                allNodes.add(nodeName);
+              });
+            }
+          });
+        }
+        
+        // Always include visited, queue, and current nodes
+        visitedData.forEach(n => allNodes.add(n));
+        queueData.forEach(n => allNodes.add(n));
+        if (current) allNodes.add(current);
+
+      // Calculate node positions using force simulation or simple layout
+      const nodePositions = {};
+      const nodeList = Array.from(allNodes);
+      const nodeCount = nodeList.length;
+
+      if (nodeCount > 0) {
+        // Simple circular layout for nodes
+        const centerX = w / 2;
+        const centerY = h / 2;
+        const radius = Math.min(w, h) * 0.35;
+        
+        nodeList.forEach((node, i) => {
+          const angle = (2 * Math.PI * i) / nodeCount - Math.PI / 2; // Start from top
+          nodePositions[node] = {
+            x: centerX + radius * Math.cos(angle),
+            y: centerY + radius * Math.sin(angle)
+          };
+        });
+      }
+
+      // Draw graph edges first (so they appear behind nodes)
+      if (graph) {
+        Object.keys(graph).forEach(fromNode => {
+          const fromPos = nodePositions[fromNode];
+          if (fromPos && Array.isArray(graph[fromNode])) {
+            graph[fromNode].forEach(neighbor => {
+              // Handle tuples like ('A', 1) - extract just the node name
+              const toNode = (Array.isArray(neighbor) || (typeof neighbor === 'object' && neighbor !== null)) && neighbor.length >= 1 
+                ? neighbor[0] 
+                : neighbor;
+              const toPos = nodePositions[toNode];
+              if (toPos) {
+                // Draw edge
+                const line = svg.append('line')
+                  .attr('x1', fromPos.x)
+                  .attr('y1', fromPos.y)
+                  .attr('x2', toPos.x)
+                  .attr('y2', toPos.y)
+                  .attr('stroke', '#94A3B8')
+                  .attr('stroke-width', 2)
+                  .attr('opacity', 0.4);
+                
+                // Add arrow marker for directed edges
+                const dx = toPos.x - fromPos.x;
+                const dy = toPos.y - fromPos.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const arrowX = fromPos.x + (dx / len) * (len - 30);
+                const arrowY = fromPos.y + (dy / len) * (len - 30);
+                
+                svg.append('polygon')
+                  .attr('points', `${arrowX},${arrowY} ${arrowX-8},${arrowY-4} ${arrowX-8},${arrowY+4}`)
+                  .attr('fill', '#94A3B8')
+                  .attr('opacity', 0.4);
+              }
+            });
+          }
+        });
+      }
+
+      // Draw nodes
+      nodeList.forEach(node => {
+        const pos = nodePositions[node];
+        if (!pos) return;
+
+        const isVisited = visitedData.includes(node);
+        const isInQueue = queueData.includes(node);
+        const isCurrent = current === node;
+
+        let fillColor, strokeColor, strokeWidth, radius;
+        
+        if (isCurrent) {
+          fillColor = '#FBBF24';
+          strokeColor = '#B45309';
+          strokeWidth = 4;
+          radius = 35;
+        } else if (isVisited) {
+          fillColor = '#10B981';
+          strokeColor = '#059669';
+          strokeWidth = 3;
+          radius = 28;
+        } else if (isInQueue) {
+          fillColor = '#3B82F6';
+          strokeColor = '#1E40AF';
+          strokeWidth = 2;
+          radius = 25;
+        } else {
+          fillColor = '#E5E7EB';
+          strokeColor = '#9CA3AF';
+          strokeWidth = 2;
+          radius = 22;
+        }
+
+        svg.append('circle')
+          .attr('cx', pos.x)
+          .attr('cy', pos.y)
+          .attr('r', radius)
+          .attr('fill', fillColor)
+          .attr('stroke', strokeColor)
+          .attr('stroke-width', strokeWidth);
+
+        svg.append('text')
+          .attr('x', pos.x)
+          .attr('y', pos.y + 5)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', isCurrent ? 18 : 14)
+          .attr('font-weight', 'bold')
+          .attr('fill', isCurrent || isVisited || isInQueue ? 'white' : '#374151')
+          .text(node);
+      });
+      } catch (err) {
+        console.error('Error rendering graph:', err);
+        const svg = d3.select('#graph-svg');
+        svg.append('text')
+          .attr('x', '50%')
+          .attr('y', '50%')
+          .attr('text-anchor', 'middle')
+          .attr('font-size', 16)
+          .attr('fill', 'red')
+          .text('Error rendering graph: ' + err.message);
+      }
+    }
+
+    // Initialize SSE connection when page loads
+    initializeSSE();
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      if (evtSource) {
+        evtSource.close();
+      }
+    });
+  </script>
+</body>
+</html>

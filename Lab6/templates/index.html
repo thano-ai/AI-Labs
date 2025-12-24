@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hill Climbing – 8 Queens</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        table {
+            border-collapse: collapse;
+            margin: auto;
+        }
+        td {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            font-size: 40px;
+        }
+        .white { background: #f0d9b5; }
+        .black { background: #b58863; }
+    </style>
+</head>
+<body>
+
+<h1>Hill Climbing – 8 Queens</h1>
+<h2>Conflicts: {{ cost }}</h2>
+
+<h2>
+{% if done %}
+    Search Finished
+    {% if cost == 0 %}
+        Solution Found!
+    {% else %}
+        Local Minimum
+    {% endif %}
+{% else %}
+    Searching...
+{% endif %}
+</h2>
+
+<table>
+{% for row in range(8) %}
+<tr>
+    {% for col in range(8) %}
+    {% set color = 'white' if (row + col) % 2 == 0 else 'black' %}
+    <td class="{{ color }}">
+        {% if board[col] == row %}
+            ♛
+        {% endif %}
+    </td>
+    {% endfor %}
+</tr>
+{% endfor %}
+</table>
+
+<p>
+Hill climbing moves only when conflicts decrease.<br>
+When stuck → local minimum.
+</p>
+
+<script>
+  {% if not done %}
+    // Reload every 800ms only if search is not finished
+    setTimeout(function() {
+      location.reload();
+    }, 800);
+  {% endif %}
+</script>
+
+</body>
+</html>

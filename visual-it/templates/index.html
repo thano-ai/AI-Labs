@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Search Visualizer — Upload</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-4">AI Search Visualizer</h1>
+    <p class="mb-4">Upload a <code>.py</code> file that implements a search algorithm (BFS, DFS, UCS, A* etc.). The tool will instrument and visualize its exploration steps without modifying your source on disk.</p>
+
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".py" class="mb-4">
+      <div>
+        <button class="px-4 py-2 bg-indigo-600 text-white rounded">Upload & Visualize</button>
+      </div>
+    </form>
+
+    <hr class="my-6">
+    <p class="text-sm text-gray-500">Tip: The instrumentor inserts lightweight probes into loops and before returns to capture per-iteration state. Keep algorithm logic in functions for best results.</p>
+  </div>
+</body>
+</html>
