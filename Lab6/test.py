@@ -1,88 +1,52 @@
 import random
-POPULATION_SIZE = 100
 
-GENES = '''abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP
-QRSTUVWXYZ 1234567890, .-;:_!"#%&/()=?@${[]}'''
+N = 8
 
-target_input = input('Enter you input: ')
-TARGET = target_input
+def random_state():
+    return [random.randint(0, N -1) for _ in range(N)]
 
-class Individual(object):
-    def __init__(self, chromosome):
-        self.chromosome = chromosome
-        self.fitness = self.cal_fitness()
+def conflicts(state):
+    count = 0
 
-    @classmethod
-    def mutated_genes(self):
-        global GENES
-        gene = random.choice(GENES)
-        return gene
+    for i in range(N):
+        for j in range(i + 1, N):
+            if state[i] == state[j]:
+                count += 1
+            if abs(state[i] - state[j]) == abs(i - j):
+                count += 1
+    return count
 
-    @classmethod
-    def create_gnome(self):
-        global TARGET
-        gnome_len = len(TARGET)
-        return [self.mutated_genes() for _ in range(gnome_len)]
+def best_neighbor(state):
+    best = state[:]
+    best_cost = conflicts(state)
 
-    def mate(self, parent2):
-        child_chromosome = []
-        for gp1, gp2 in zip(self.chromosome, parent2.chromosome):
+    for col in range(N):
+        original_row = state[col]
+        for row in range(N):
+            if row == original_row:
+                continue
+            neighbor = state[:]
+            neighbor[col] = row
+            cost = conflicts(neighbor)
+            if cost < best_cost:
+                best_cost = cost
+                best = neighbor
+    return best, best_cost
 
-            prob = random.random()
-            if prob < 0.45:
-                child_chromosome.append(gp1)
-            elif prob < 0.90:
-                child_chromosome.append(gp2)
-            else:
-                child_chromosome.append(self.mutated_genes())
-        return Individual(child_chromosome)
+def hill_climbing():
+    current = random_state()
 
-    def cal_fitness(self):
-        global TARGET
-        fitness = 0
-        for gs, gt in zip(self.chromosome, TARGET):
-            if gs != gt:
-                fitness += 1
-        return fitness
+    current_cost = conflicts(current)
 
-def main():
-    global POPULATION_SIZE
-    generation = 1
+    while True:
+        neighbor, neighbor_cost = best_neighbor(current)
+        if neighbor_cost >= current_cost:
+            return current, current_cost
 
-    found = False
-    population = []
-    for _ in range(POPULATION_SIZE):
-        gnome = Individual.create_gnome()
-        population.append(Individual(gnome))
+        current = neighbor
+        current_cost = neighbor_cost
 
-    while not found:
-        population = sorted(population, key=lambda x: x.fitness)
-        if population[0].fitness <= 0:
-            found = True
-            break
-        new_generation = []
-        s = int((10 * POPULATION_SIZE) / 100)
-        new_generation.extend(population[:s])
 
-        s = int((90 * POPULATION_SIZE) / 100)
-        for _ in range(s):
-            parent1 = random.choice(population[:50])
-            parent2 = random.choice(population[:50])
-            child = parent1.mate(parent2)
-            new_generation.append(child)
 
-        population = new_generation
-        print("Generation: {}\tString: {}\tFitness: {}". \
-              format(generation,
-                     "".join(population[0].chromosome),
-                     population[0].fitness))
-
-        generation += 1
-
-    print("Generation: {}\tString: {}\tFitness: {}". \
-          format(generation,
-                 "".join(population[0].chromosome),
-                 population[0].fitness))
-
-if __name__ == '__main__':
-    main()
+solution, cost = hill_climbing()
+print(solution, cost)

@@ -16,7 +16,7 @@ def check_winner(board):
 
     for a, b, c in win_states:
         if board[a] == board[b] == board[c] and board[a] != "":
-            return board[a]
+            return board[a] ## X O
 
     if "" not in board:
         return "tie"
@@ -27,9 +27,9 @@ def check_winner(board):
 def minimax(board, is_maximizing, ai, human):
     result = check_winner(board)
     if result == ai:
-        return 10
+        return 1
     elif result == human:
-        return -10
+        return -1
     elif result == "tie":
         return 0
 
