@@ -1,10 +1,342 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSP Algorithm Visualizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-$END$
+    <div class="container">
+        <header>
+            <h1>TSP Algorithm Visualizer</h1>
+            <p>Visualizing Genetic Algorithm for Traveling Salesperson Problem</p>
+        </header>
+
+        <div class="main">
+            <div class="visualization">
+                <div class="canvas-container">
+                    <canvas id="tspCanvas" width="800" height="600"></canvas>
+                    <div class="info-overlay">
+                        <div class="info-item">
+                            <span class="label">Generation:</span>
+                            <span id="currentGen" class="value">0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Best Distance:</span>
+                            <span id="bestDistance" class="value">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <h3>Algorithm Settings</h3>
+
+                        <div class="control-row">
+                            <label for="selectionMethod">Selection Method:</label>
+                            <select id="selectionMethod">
+                                <option value="tournament">Tournament Selection</option>
+                                <option value="roulette">Roulette Wheel Selection</option>
+                            </select>
+                        </div>
+
+                        <div class="control-row">
+                            <label for="startCity">Start City:</label>
+                            <select id="startCity">
+                                <option value="">Random Start</option>
+                                {% for city in cities %}
+                                <option value="{{ city }}">{{ city }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="control-row">
+                            <label for="endCity">End City:</label>
+                            <select id="endCity">
+                                <option value="">Random End</option>
+                                {% for city in cities %}
+                                <option value="{{ city }}">{{ city }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="buttons">
+                        <button id="runBtn" class="btn run">▶ Run Algorithm</button>
+                        <button id="resetBtn" class="btn reset">⟳ Reset</button>
+                    </div>
+
+                    <div class="results">
+                        <h3>Results</h3>
+                        <div class="result-row">
+                            <span>Best Distance:</span>
+                            <span id="finalDistance">-</span>
+                        </div>
+                        <div class="result-row">
+                            <span>Found at Generation:</span>
+                            <span id="foundAtGen">-</span>
+                        </div>
+                        <div class="result-row">
+                            <span>Path:</span>
+                            <div id="bestPath" class="path">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TSPVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('tspCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.cities = [];
+                this.bestPath = [];
+                this.currentGen = 0;
+                this.bestDistance = Infinity;
+                this.animationId = null;
+                this.isRunning = false;
+
+                this.init();
+            }
+
+            async init() {
+                await this.loadCities();
+                this.drawCities();
+                this.setupEventListeners();
+            }
+
+            async loadCities() {
+                try {
+                    const response = await fetch('/api/cities');
+                    this.cities = await response.json();
+                } catch (error) {
+                    console.error('Error loading cities:', error);
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('runBtn').addEventListener('click', () => this.runAlgorithm());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+            }
+
+            async runAlgorithm() {
+                if (this.isRunning) return;
+
+                this.isRunning = true;
+                this.resetVisualization();
+
+                const params = {
+                    selection_method: document.getElementById('selectionMethod').value,
+                    start_city: document.getElementById('startCity').value || null,
+                    end_city: document.getElementById('endCity').value || null
+                };
+
+                try {
+                    const response = await fetch('/api/solve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(params)
+                    });
+
+                    const result = await response.json();
+                    this.showResults(result);
+                    this.animateSolution(result.path_indices);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                } finally {
+                    this.isRunning = false;
+                }
+            }
+
+            reset() {
+                this.isRunning = false;
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                this.resetVisualization();
+                this.drawCities();
+            }
+
+            resetVisualization() {
+                this.currentGen = 0;
+                this.bestDistance = Infinity;
+                this.bestPath = [];
+                this.updateDisplay();
+
+                document.getElementById('finalDistance').textContent = '-';
+                document.getElementById('foundAtGen').textContent = '-';
+                document.getElementById('bestPath').textContent = '-';
+            }
+
+            showResults(result) {
+                document.getElementById('finalDistance').textContent = result.distance.toFixed(2);
+                document.getElementById('foundAtGen').textContent = result.generation_found;
+                document.getElementById('bestPath').textContent = result.path.join(' → ');
+            }
+
+            drawCities() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                if (this.cities.length === 0) return;
+
+                const lats = this.cities.map(c => c.lat);
+                const lngs = this.cities.map(c => c.lng);
+                const minLat = Math.min(...lats);
+                const maxLat = Math.max(...lats);
+                const minLng = Math.min(...lngs);
+                const maxLng = Math.max(...lngs);
+
+                const padding = 60;
+                const scaleX = (this.canvas.width - padding * 2) / (maxLng - minLng);
+                const scaleY = (this.canvas.height - padding * 2) / (maxLat - minLat);
+                const scale = Math.min(scaleX, scaleY);
+
+                // Draw connections for best path
+                if (this.bestPath.length > 1) {
+                    this.ctx.beginPath();
+                    this.bestPath.forEach((cityIdx, i) => {
+                        const city = this.cities[cityIdx];
+                        const x = padding + (city.lng - minLng) * scale;
+                        const y = this.canvas.height - padding - (city.lat - minLat) * scale;
+
+                        if (i === 0) {
+                            this.ctx.moveTo(x, y);
+                        } else {
+                            this.ctx.lineTo(x, y);
+                        }
+                    });
+
+                    this.ctx.strokeStyle = 'rgba(67, 97, 238, 0.3)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                }
+
+                // Draw city points
+                this.cities.forEach((city, index) => {
+                    const x = padding + (city.lng - minLng) * scale;
+                    const y = this.canvas.height - padding - (city.lat - minLat) * scale;
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#4361ee';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = 'white';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.font = 'bold 12px Inter';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(city.name, x, y - 15);
+                });
+            }
+
+            animateSolution(pathIndices) {
+                this.bestPath = pathIndices;
+                this.currentGen = 200; // Total generations
+                this.updateDisplay();
+                this.animatePath(pathIndices);
+            }
+
+            animatePath(pathIndices) {
+                this.drawCities();
+
+                const padding = 60;
+                const lats = this.cities.map(c => c.lat);
+                const lngs = this.cities.map(c => c.lng);
+                const minLat = Math.min(...lats);
+                const maxLat = Math.max(...lats);
+                const minLng = Math.min(...lngs);
+                const maxLng = Math.max(...lngs);
+                const scaleX = (this.canvas.width - padding * 2) / (maxLng - minLng);
+                const scaleY = (this.canvas.height - padding * 2) / (maxLat - minLat);
+                const scale = Math.min(scaleX, scaleY);
+
+                // Draw the final path
+                this.ctx.beginPath();
+                pathIndices.forEach((cityIdx, i) => {
+                    const city = this.cities[cityIdx];
+                    const x = padding + (city.lng - minLng) * scale;
+                    const y = this.canvas.height - padding - (city.lat - minLat) * scale;
+
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+
+                // Close the loop
+                const firstCity = this.cities[pathIndices[0]];
+                const firstX = padding + (firstCity.lng - minLng) * scale;
+                const firstY = this.canvas.height - padding - (firstCity.lat - minLat) * scale;
+                this.ctx.lineTo(firstX, firstY);
+
+                this.ctx.strokeStyle = '#4361ee';
+                this.ctx.lineWidth = 3;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.stroke();
+
+                // Animate a moving point along the path
+                let progress = 0;
+                const animate = () => {
+                    if (progress < 1) {
+                        progress += 0.02;
+
+                        // Redraw everything
+                        this.drawCities();
+                        this.ctx.stroke();
+
+                        // Calculate current position
+                        const segments = pathIndices.length;
+                        const segment = Math.floor(progress * segments);
+                        const segmentProgress = (progress * segments) % 1;
+
+                        if (segment < segments - 1) {
+                            const city1 = this.cities[pathIndices[segment]];
+                            const city2 = this.cities[pathIndices[segment + 1]];
+
+                            const x1 = padding + (city1.lng - minLng) * scale;
+                            const y1 = this.canvas.height - padding - (city1.lat - minLat) * scale;
+                            const x2 = padding + (city2.lng - minLng) * scale;
+                            const y2 = this.canvas.height - padding - (city2.lat - minLat) * scale;
+
+                            const currentX = x1 + (x2 - x1) * segmentProgress;
+                            const currentY = y1 + (y2 - y1) * segmentProgress;
+
+                            // Draw moving point
+                            this.ctx.beginPath();
+                            this.ctx.arc(currentX, currentY, 10, 0, Math.PI * 2);
+                            this.ctx.fillStyle = '#f72585';
+                            this.ctx.fill();
+                            this.ctx.strokeStyle = 'white';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.stroke();
+                        }
+
+                        this.animationId = requestAnimationFrame(animate);
+                    }
+                };
+
+                animate();
+            }
+
+            updateDisplay() {
+                document.getElementById('currentGen').textContent = this.currentGen;
+                document.getElementById('bestDistance').textContent = this.bestDistance === Infinity ? '0.00' : this.bestDistance.toFixed(2);
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.tspVisualizer = new TSPVisualizer();
+        });
+    </script>
 </body>
 </html>
