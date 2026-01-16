@@ -5,8 +5,8 @@ import random
 # ------------------------------
 N = 8
 POPULATION_SIZE = 100
-MUTATION_RATE = 0.2  # Increased mutation rate
-ELITISM_COUNT = 5  # Reduced elitism
+MUTATION_RATE = 0.2
+ELITISM_COUNT = 5
 MAX_GENERATIONS = 1000
 
 
@@ -131,7 +131,7 @@ def print_solution(solution):
 # ------------------------------
 # Run
 # ------------------------------
-solution = genetic_algorithm(use_roulette=False)
+solution = genetic_algorithm(use_roulette=True)
 
 if solution:
     print_solution(solution)

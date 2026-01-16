@@ -15,7 +15,7 @@ def greedy_best_first_search(graph, start, goal, heuristic):
             while current is not None:
                 path.append(current) # [ G, d, e, a, s
                 current = parent[current] # none
-            return path[::-1]  # Reverse for correct order
+            return path[::-1], visited  # Reverse for correct order
 
         visited.add(current)
 
@@ -69,5 +69,5 @@ print("Computed Heuristic:", heuristic)
 # Run searches
 start_node = 'S'
 
-result_greedy = greedy_best_first_search(graph, start_node, goal_node, heuristic)
-print("Greedy Best-First Search Path:", result_greedy)
+result_greedy, visited = greedy_best_first_search(graph, start_node, goal_node, heuristic)
+print("Greedy Best-First Search Path:", result_greedy, visited)

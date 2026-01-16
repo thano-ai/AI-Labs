@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from collections import deque
 
+
 app = Flask(__name__)
 
 # --- Your BFS Code (NOT MODIFIED) ---

@@ -25,6 +25,7 @@ def conflicts(state):
             if abs(state[i] - state[j]) == abs(i - j):
                 count += 1
     return count
+
 def random_neighbor(state):
     neighbor = state[:]
     col = random.randint(0, N - 1)

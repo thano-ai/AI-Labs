@@ -28,7 +28,7 @@ async function runalg() {
 
         if (c) {
             c.classList.add("current");
-            await sleep(600);
+            await sleep(1000);
             c.classList.remove("current");
             c.classList.add("visited");
         }

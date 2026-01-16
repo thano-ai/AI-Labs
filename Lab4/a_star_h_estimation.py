@@ -5,6 +5,7 @@ def a_star_search(graph, start, goal, heuristic):
     heapq.heappush(queue, (0 + heuristic[start], start))  # (6, s)
     cost_so_far = {start: 0}  # Stores g(n) for each node
     parent = {start: None}
+    visited = set()
 
     while queue:
         _, current = heapq.heappop(queue) # a
@@ -14,7 +15,9 @@ def a_star_search(graph, start, goal, heuristic):
             while current is not None:
                 path.append(current)
                 current = parent[current]
-            return path[::-1]
+            return path[::-1], visited
+
+        visited.add(current)
 
         for neighbor, cost in graph.get(current, []): # g, 6
             new_cost = cost_so_far[current] + cost #
@@ -50,23 +53,37 @@ def compute_heuristic(graph, goal):
 
     return heuristic
 
-graph = {
-    'S': [('A', 1)],
-    'A': [('B', 2), ('D', 4), ('E', 9)],
-    'B': [('C', 3)],
-    'D': [('G', 6)],
-    'E': [('D', 10)],
-    'C': [],
-    'G': []
+# graph = {
+#     'S': [('A', 1)],
+#     'A': [('B', 2), ('D', 4), ('E', 9)],
+#     'B': [('C', 3)],
+#     'D': [('G', 6)],
+#     'E': [('D', 10)],
+#     'C': [],
+#     'G': []
+# }
+
+tree = {
+    'S': [('A', 3), ('B', 5), ('H', 10)],
+    'A': [('C', 10), ('F', 5)],
+    'B': [('D', 2), ('I', 4)],
+    'H': [('J', 2)],
+    'C': [('G', 1)],
+    'F': [('G', 8)],
+    'D': [('E', 2)],
+    'I': [('E', 6)],
+    'G': [],
+    'E': [('G', 2)],
+    'J': [('G', 1)],
 }
 
 goal_node = 'G'
-heuristic = compute_heuristic(graph, goal_node)
+heuristic = compute_heuristic(tree, goal_node)
 
 print("Computed Heuristic:", heuristic)
 
 # Run searches
 start_node = 'S'
 
-result_astar = a_star_search(graph, start_node, goal_node, heuristic)
-print("A* Search Path:", result_astar)
+result_astar, visited = a_star_search(tree, start_node, goal_node, heuristic)
+print("A* Search Path:", result_astar, visited)

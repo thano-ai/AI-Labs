@@ -38,7 +38,10 @@ def show_board(solution):
     plt.show()
 
 
-tournament_solution = [5, 2, 6, 3, 0, 7, 1, 4]
+tournament_solution = [1, 4, 6, 3, 0, 7, 5, 2]
+
+
+
 
 # Example: solution from roulette
 roulette_solution = [5, 3, 1, 7, 4, 6, 0, 2]

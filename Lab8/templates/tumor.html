@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tumor Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Tumor Prediction</h1>
+        <p>Enter the required information below to predict diabetes status:</p>
+        <form action="/predict" method="post">
+            <div class="form-group">
+                <label for="Clump">Clump:</label>
+                <input type="number" step="any" name="Clump" required>
+            </div>
+            <div class="form-group">
+                <label for="UnifSize">UnifSize:</label>
+                <input type="number" step="any" name="UnifSize" required>
+            </div>
+            <div class="form-group">
+                <label for="UnifShape">UnifShape:</label>
+                <input type="number" step="any" name="UnifShape" required>
+            </div>
+            <div class="form-group">
+                <label for="MargAdh">MargAdh:</label>
+                <input type="number" step="any" name="MargAdh" required>
+            </div>
+            <div class="form-group">
+                <label for="SingEpiSize">SingEpiSize:</label>
+                <input type="number" step="any" name="SingEpiSize" required>
+            </div>
+            <div class="form-group">
+                <label for="BareNuc">BMIBareNuc:</label>
+                <input type="number" step="any" name="BareNuc" required>
+            </div>
+            <div class="form-group">
+                <label for="BlandChrom">BlandChrom:</label>
+                <input type="number" step="any" name="BlandChrom" required>
+            </div>
+            <div class="form-group">
+                <label for="NormNucl">NormNucl:</label>
+                <input type="number" step="any" name="NormNucl" required>
+            </div>
+            <div class="form-group">
+                <label for="Mit">Mit:</label>
+                <input type="number" step="any" name="Mit" required>
+            </div>
+            <button type="submit" class="btn">Predict</button>
+        </form>
+        {% if prediction_text %}
+            <div class="result">
+                <h3>{{ prediction_text }}</h3>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

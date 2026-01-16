@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Diabetes Prediction</h1>
+        <p>Enter the required information below to predict diabetes status:</p>
+        <form action="/predict" method="post">
+            <div class="form-group">
+                <label for="Pregnancies">Pregnancies:</label>
+                <input type="number" step="any" name="Pregnancies" required>
+            </div>
+            <div class="form-group">
+                <label for="Glucose">Glucose:</label>
+                <input type="number" step="any" name="Glucose" required>
+            </div>
+            <div class="form-group">
+                <label for="BloodPressure">Blood Pressure:</label>
+                <input type="number" step="any" name="BloodPressure" required>
+            </div>
+            <div class="form-group">
+                <label for="SkinThickness">Skin Thickness:</label>
+                <input type="number" step="any" name="SkinThickness" required>
+            </div>
+            <div class="form-group">
+                <label for="Insulin">Insulin:</label>
+                <input type="number" step="any" name="Insulin" required>
+            </div>
+            <div class="form-group">
+                <label for="BMI">BMI:</label>
+                <input type="number" step="any" name="BMI" required>
+            </div>
+            <div class="form-group">
+                <label for="DiabetesPedigreeFunction">Diabetes Pedigree Function:</label>
+                <input type="number" step="any" name="DiabetesPedigreeFunction" required>
+            </div>
+            <div class="form-group">
+                <label for="Age">Age:</label>
+                <input type="number" step="any" name="Age" required>
+            </div>
+            <button type="submit" class="btn">Predict</button>
+        </form>
+        {% if prediction_text %}
+            <div class="result">
+                <h3>{{ prediction_text }}</h3>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

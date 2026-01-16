@@ -1,8 +1,8 @@
 import heapq
 
-def greedy(domain, start, goal, heuristic):
+def greedy(start, goal, tree, heuristic):
     queue = []
-    heapq.heappush(queue, (heuristic[start] + 0, start))
+    heapq.heappush(queue, (heuristic[start], start)) ### F = h + g
     visited = set()
     parent = {start: None}
     cost_so_far = {start: 0}
@@ -12,21 +12,39 @@ def greedy(domain, start, goal, heuristic):
         if node == goal:
             path = []
             while node is not None:
-                path.append(node)
-                node = parent[node]
-            return path[::-1]
+                path.append(node) ### G, D, E, A, S
+                node = parent[node] ### None
+            return path[::-1], visited
 
-        visited.add(node)
-
-
-        for child, child_cost in domain[node]:
-            new_cost = cost_so_far[node] + child_cost
+        visited.add(node) ## A
+        for child, child_cost in tree[node]: ### G
+            new_cost = child_cost + cost_so_far[node]
             if child not in visited and (child not in cost_so_far or new_cost < cost_so_far[child]):
                 cost_so_far[child] = new_cost
                 priority = new_cost + heuristic[child]
-                heapq.heappush(queue, (priority, child))
-                parent[child] = node
+                heapq.heappush(queue, (priority, child)) ###   6, B, 0 G
+                parent[child] = node ##3 {A: S, B: A, D: E, E: A, G: D}
     return None
+
+def compute_h(goal, graph):
+    reversed_graph = {}
+    for u in graph:
+        for v, cost in graph[u]:
+            reversed_graph.setdefault(v, []).append((u, cost))
+
+    heuristic = {node: float('inf') for node in graph}
+    heuristic[goal] = 0
+    queue = [(0, goal)]
+
+    while queue:
+        h, node = heapq.heappop(queue)
+        for child, child_cost in reversed_graph.get(node, []):
+            new_h = h + child_cost
+            if new_h < heuristic[child]:
+                heuristic[child] = new_h
+                heapq.heappush(queue, (new_h, child))
+    return heuristic
+
 
 graph = {
     'S': [('A', 1)],
@@ -38,10 +56,10 @@ graph = {
     'G': []
 }
 
-heuristic = {
-    'S': 6, 'A': 5, 'B': 6, 'D': 2, 'E': 1, 'C': 7, 'G': 0
-}
+
+heuristic = compute_h('C', graph)
+print(heuristic)
 
 
-solution = greedy(graph, 'S', 'G', heuristic)
-print(solution)
+solution, visited = greedy('S', 'C', graph, heuristic)
+print(solution, visited)

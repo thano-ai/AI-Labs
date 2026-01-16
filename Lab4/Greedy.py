@@ -27,20 +27,23 @@ def greedy_best_first_search(graph, start, goal, heuristic):
     return None  # Goal not found
 
 # Graph and heuristic
-graph = {
-    'S': [('A', 1)],
-    'A': [('B', 2), ('D', 4), ('E', 9)],
-    'B': [('C', 3)],
-    'D': [('G', 6)],
-    'E': [('D', 10)],
-    'C': [],
-    'G': []
+tree = {
+    'S': [('A', 3), ('B', 5), ('H', 10)],
+    'A': [('C', 10), ('F', 5)],
+    'B': [('D', 2), ('I', 4)],
+    'H': [('J', 2)],
+    'C': [('G', 1)],
+    'F': [('G', 8)],
+    'D': [('E', 2)],
+    'I': [('E', 6)],
+    'G': [],
+    'E': [('G', 2)],
+    'J': [('G', 1)],
 }
 
-heuristic = {
-    'S': 6, 'A': 5, 'B': 6, 'D': 2, 'E': 1, 'C': 7, 'G': 0
+heuristics = {
+    'S': 10, 'A': 2, 'B': 8, 'C': 1, 'D': 4, 'E': 2, 'F': 4, 'G': 0, 'H': 9, 'I': 5, 'J': 1,
 }
-
 # tree = {
 #     'S': [('A', 4), ('B', 10), ('C', 11)],
 #     'A': [('B', 8), ('D', 5)],
@@ -66,5 +69,5 @@ heuristic = {
 
 start_node = 'S'
 goal_node = 'G'
-result = greedy_best_first_search(graph, start_node, goal_node, heuristic)
+result = greedy_best_first_search(tree, start_node, goal_node, heuristics)
 print("Greedy Best-First Search Path:", result)

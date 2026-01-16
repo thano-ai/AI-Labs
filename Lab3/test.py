@@ -1,29 +1,20 @@
-import heapq
-def ucs(start, goal, domain):
-    queue = []
-    heapq.heappush(queue, (0, start))
-    visited = set()
-    parent = {start: None}
-    cost_so_far = {start: 0}
-
-    while queue:
-        cost, node = heapq.heappop(queue)
+def ids(start, goal, tree):
+    def dls(node, depth):
         if node == goal:
-            path = []
-            while node is not None:
-                path.append(node)
-                node = parent[node]
-            return path[::-1], cost
+            return [node]
+        if depth == 0:
+            return None
+        for child, _ in tree[node]:
+            path = dls(child, depth - 1)
+            if path:
+                return  [node] + path
+        return None
 
-        visited.add(node)
-        for child, child_cost in domain[node]:
-            new_cost = child_cost + cost
-            if child not in visited and (child not in cost_so_far or new_cost < cost_so_far[child]):
-                heapq.heappush(queue, (new_cost, child))
-                cost_so_far[child] = new_cost
-                parent[child] = node
-
-    return None, float('inf')
+    for depth in range(len(tree) + 1):
+        soltuion = dls(start, depth)
+        if soltuion:
+            return soltuion
+    return "Goal Not Found"
 
 
 
@@ -33,14 +24,10 @@ tree = {
     'C': [('F', 1), ('G', 7)],
     'D': [],
     'E': [],
-    'F': [('H', 4), ('I', 5), ('E', 7)],
+    'F': [('H', 4), ('I', 5), ('E', 4)],
     'G': [],
     'H': [],
     'I': []
 }
-
-solution_path , total_cost = ucs('A', 'E', tree)
-print(solution_path, total_cost)
-
-
-
+solution_path = ids('A', 'E', tree)
+print(solution_path)
